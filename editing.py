@@ -1,6 +1,5 @@
 from __future__ import print_function
 import mechanize
-import urllib
 import time
 import re
 from utils import colored_out
@@ -14,12 +13,20 @@ try:
     from selenium.webdriver.support import expected_conditions as EC
     from selenium.webdriver.common.by import By
     from selenium.webdriver.support.ui import WebDriverWait
-    from selenium.common.exceptions import NoSuchElementException, ElementNotVisibleException
+    from selenium.common.exceptions import (
+        NoSuchElementException,
+        ElementNotVisibleException,
+    )
 except ImportError as err:
     colored_out(
         bcolors.WARNING, "Warning: Cannot use Selenium Webdriver client: %s" % err
     )
     webdriver = None
+
+try:
+    from urllib import quote, urlencode
+except ImportError:
+    from urllib.parse import quote, urlencode
 
 try:
     from pyvirtualdisplay import Display
@@ -88,7 +95,7 @@ class MusicBrainzClient(object):
     def url(self, path, **kwargs):
         query = ""
         if kwargs:
-            query = "?" + urllib.urlencode(
+            query = "?" + urlencode(
                 [(k, v.encode("utf8")) for (k, v) in kwargs.items()]
             )
         return self.server + path + query
@@ -105,7 +112,7 @@ class MusicBrainzClient(object):
         self.b["password"] = password
         self.b.submit()
         resp = self.b.response()
-        expected = self.url("/user/" + urllib.quote(username))
+        expected = self.url("/user/" + quote(username))
         actual = resp.geturl()
         if actual != expected:
             raise Exception(
@@ -179,7 +186,7 @@ class MusicBrainzClient(object):
 
     def add_release(self, album, edit_note, auto=False):
         form = album_to_form(album)
-        self.b.open(self.url("/release/add"), urllib.urlencode(form))
+        self.b.open(self.url("/release/add"), urlencode(form))
         time.sleep(2.0)
         self._select_form("/release")
         self.b.submit(name="step_editnote")
@@ -378,7 +385,7 @@ class MusicBrainzClient(object):
 
     def merge(self, entity_type, entity_ids, target_id, edit_note):
         params = [("add-to-merge", id) for id in entity_ids]
-        self.b.open(self.url("/%s/merge_queue" % entity_type), urllib.urlencode(params))
+        self.b.open(self.url("/%s/merge_queue" % entity_type), urlencode(params))
         page = self.b.response().read()
         if "You are about to merge" not in page:
             raise Exception("unable to add items to merge queue")
@@ -390,7 +397,7 @@ class MusicBrainzClient(object):
         }
         for idx, val in enumerate(entity_ids):
             params["merge.merging.%s" % idx] = val
-        self.b.open(self.url("/%s/merge" % entity_type), urllib.urlencode(params))
+        self.b.open(self.url("/%s/merge" % entity_type), urlencode(params))
         self._check_response(None)
 
     def _edit_release_information(self, entity_id, attributes, edit_note, auto=False):
@@ -517,7 +524,7 @@ class MusicBrainzWebdriverClient(object):
     def url(self, path, **kwargs):
         query = ""
         if kwargs:
-            query = "?" + urllib.urlencode(
+            query = "?" + urlencode(
                 [(k, v.encode("utf8")) for (k, v) in kwargs.items()]
             )
         return self.server + path + query
@@ -528,7 +535,7 @@ class MusicBrainzWebdriverClient(object):
         passwordField = self.driver.find_element_by_name("password")
         passwordField.send_keys(password)
         passwordField.submit()
-        if self.driver.current_url != self.url("/user/" + urllib.quote(username)):
+        if self.driver.current_url != self.url("/user/" + quote(username)):
             raise Exception("unable to login")
 
     def _as_auto_editor(self, prefix, auto):

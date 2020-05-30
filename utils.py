@@ -1,12 +1,16 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function
 
-import urllib
 import re
 import locale
 import sys
 import os
 import unicodedata
+
+try:
+    from urllib import quote, unquote
+except ImportError:
+    from urllib.parse import quote, unquote
 
 
 def mangle_name(s):
@@ -174,7 +178,7 @@ def extract_page_title(url, wp_lang):
     prefix = 'http://%s.wikipedia.org/wiki/' % wp_lang
     if not url.startswith(prefix):
         return None
-    return urllib.unquote(url[len(prefix):].encode('utf8')).decode('utf8')
+    return unquote(url[len(prefix):].encode('utf8')).decode('utf8')
 
 
 def wp_is_canonical_page(title, page_orig):
@@ -191,7 +195,7 @@ def wp_is_canonical_page(title, page_orig):
 
 
 def quote_page_title(title):
-    return urllib.quote(title.encode('utf8').replace(' ', '_'), '/$,:;@')
+    return quote(title.encode('utf8').replace(' ', '_'), '/$,:;@')
 
 _unaccent_dict = {u'Æ': u'AE', u'æ': u'ae', u'Œ': u'OE', u'œ': u'oe', u'ß': 'ss',
                 u"…": u"...", u"‘": u"'", u"’": u"'", u"‚": u"'", u"“": u"\"", u"”": u"\"",
