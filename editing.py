@@ -8,6 +8,7 @@ import os
 import json
 import tempfile
 from utils import colored_out
+from utils import bcolors, colored_out
 from datetime import datetime
 from mbbot.guesscase import guess_artist_sort_name
 
