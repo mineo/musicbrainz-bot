@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from __future__ import print_function
 
 import urllib
 import re
@@ -80,7 +81,7 @@ def is_in_script(text, scripts):
             script_regexes[script] = script_regex
         regex += script_regex
     regex = '^[%s]+$' % regex
-    print regex
+    print(regex)
     return bool(re.match(regex, text))
 
 
