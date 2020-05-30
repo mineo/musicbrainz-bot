@@ -5,20 +5,15 @@ import urllib2
 import time
 import re
 import os
-import random
-import string
 import json
 import tempfile
-import hashlib
-import base64
-from utils import structureToString, colored_out
+from utils import colored_out
 from datetime import datetime
 from mbbot.guesscase import guess_artist_sort_name
 
 # Optional modules
 try:
     from selenium import webdriver
-    from selenium.webdriver.common.keys import Keys
     from selenium.webdriver.support import expected_conditions as EC
     from selenium.webdriver.common.by import By
     from selenium.webdriver.support.ui import WebDriverWait
