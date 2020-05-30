@@ -1,12 +1,8 @@
 from __future__ import print_function
 import mechanize
 import urllib
-import urllib2
 import time
 import re
-import os
-import json
-import tempfile
 from utils import colored_out
 from utils import bcolors, colored_out
 from datetime import datetime
@@ -232,76 +228,6 @@ class MusicBrainzClient(object):
         else:
             return self._check_response()
 
-    def _relationship_editor_webservice_action(
-        self,
-        action,
-        rel_id,
-        link_type,
-        edit_note,
-        auto,
-        entity0,
-        entity1,
-        attributes={},
-        begin_date={},
-        end_date={},
-    ):
-        if (action == "edit" or action == "delete") and rel_id is None:
-            raise Exception(
-                "Can" "t " + action + " relationship: no Id has been provided"
-            )
-        prefix = "rel-editor."
-        dta = {
-            prefix + "rels.0.action": action,
-            prefix + "rels.0.link_type": link_type,
-            prefix + "edit_note": edit_note.encode("utf-8"),
-            prefix + "make_votable": not auto and 1 or 0,
-        }
-        if rel_id:
-            dta[prefix + "rels.0.id"] = rel_id
-        entities = sorted([entity0, entity1], key=lambda entity: entity["type"])
-        dta.update(
-            (prefix + "rels.0.entity." + repr(x) + "." + k, v)
-            for x in range(2)
-            for (k, v) in entities[x].iteritems()
-        )
-        dta.update(
-            (prefix + "rels.0.attrs." + k, str(v)) for k, v in attributes.items()
-        )
-        dta.update(
-            (prefix + "rels.0.period.begin_date." + k, str(v))
-            for k, v in begin_date.items()
-        )
-        dta.update(
-            (prefix + "rels.0.period.end_date." + k, str(v))
-            for k, v in end_date.items()
-        )
-        try:
-            self.b.open(self.url("/relationship-editor"), data=urllib.urlencode(dta))
-        except urllib2.HTTPError as e:
-            if e.getcode() != 400:
-                raise Exception("unable to post edit", e)
-        try:
-            jmsg = json.load(self.b.response())
-        except ValueError as e:
-            raise Exception("unable to parse response as JSON", e)
-        if not jmsg.has_key("edits") or jmsg.has_key("error"):
-            raise Exception("unable to post edit", jmsg)
-        else:
-            if jmsg["edits"][0]["message"] == "no changes":
-                return False
-        return True
-
-    def add_url(self, entity_type, entity_id, link_type, url, edit_note="", auto=False):
-        return self._relationship_editor_webservice_action(
-            "add",
-            None,
-            link_type,
-            edit_note,
-            auto,
-            {"gid": entity_id, "type": entity_type},
-            {"url": url, "type": "url"},
-        )
-
     def _update_entity_if_not_set(
         self,
         update,
@@ -434,31 +360,6 @@ class MusicBrainzClient(object):
             return
         return self._edit_note_and_auto_editor_and_submit_and_check_response(
             "edit-work.", auto, edit_note
-        )
-
-    def edit_relationship(
-        self,
-        rel_id,
-        entity0,
-        entity1,
-        link_type,
-        attributes,
-        begin_date,
-        end_date,
-        edit_note,
-        auto=False,
-    ):
-        return self._relationship_editor_webservice_action(
-            "edit",
-            rel_id,
-            link_type,
-            edit_note,
-            auto,
-            entity0,
-            entity1,
-            attributes,
-            begin_date,
-            end_date,
         )
 
     def remove_relationship(self, rel_id, entity0_type, entity1_type, edit_note):
@@ -659,59 +560,6 @@ class MusicBrainzWebdriverClient(object):
         for tab in tabs:
             if "error-tab" in tab.get_attribute("class"):
                 return True
-
-    def add_cover_art(
-        self,
-        release_gid,
-        image,
-        types=[],
-        position=None,
-        comment=u"",
-        edit_note=u"",
-        auto=False,
-    ):
-        # Download image if it is remote
-        image_is_remote = (
-            True if image.startswith(("http://", "https://", "ftp://")) else False
-        )
-        if image_is_remote:
-            u = urllib2.urlopen(image)
-            tmpfile = tempfile.NamedTemporaryFile(delete=False)
-            tmpfile.write(u.read())
-            tmpfile.close()
-            localFile = tmpfile.name
-        else:
-            localFile = os.path.abspath(image)
-
-        self.driver.get(self.url("/release/%s/add-cover-art" % (release_gid,)))
-        # Select image
-        self.driver.execute_script(
-            "$('input[type=file]').css('left', 0);"
-        )  # Selenium needs the file selector to be visible
-        self.driver.find_element_by_xpath("//input[@type='file']").send_keys(localFile)
-        # Set types
-        typeLabels = self.driver.find_elements_by_xpath(
-            "//div[@class='cover-art-types row']//ul//label"
-        )
-        for type in types:
-            for label in typeLabels:
-                if label.find_element_by_tag_name("span").text.lower() == type.lower():
-                    label.click()
-                    break
-        # Set comment
-        self.driver.find_element_by_xpath("//input[@class='comment']").send_keys(
-            comment.encode("utf8")
-        )
-        # Set edit note
-        self._enter_edit_note(edit_note)
-        # Auto-edit
-        self._as_auto_editor("add-cover-art", auto)
-        # Submit
-        submitButton = self.driver.find_element_by_id("add-cover-art-submit")
-        self._submit_and_wait(submitButton)
-        # Remove downloaded file
-        if image_is_remote:
-            os.remove(localFile)
 
     def _release_editor_prerequisites_are_satisfied(self):
         # Disable confirmation when exiting this page
